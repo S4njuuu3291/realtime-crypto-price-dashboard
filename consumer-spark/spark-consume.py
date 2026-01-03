@@ -9,6 +9,8 @@ spark = SparkSession.builder \
     .master("local[*]") \
     .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,org.postgresql:postgresql:42.7.2") \
     .config("spark.sql.shuffle.partitions", "4") \
+    .config("spark.sql.session.timeZone", "UTC") \
+    .config("spark.executor.extraJavaOptions", "-Duser.timezone=UTC") \
     .getOrCreate()
 
 spark.sparkContext.setLogLevel("OFF")
@@ -35,8 +37,8 @@ parsed_stream = raw_stream.selectExpr("CAST(value AS STRING) as json_value") \
     .select("data.*")
 
 # cast event time and processed time to timestamp
-parsed_stream = parsed_stream.withColumn("event_time", col("event_time").cast("timestamp"))
-parsed_stream = parsed_stream.withColumn("processed_time", col("processed_time").cast("timestamp"))
+parsed_stream = parsed_stream.withColumn("event_time", timestamp_seconds(col("event_time")))
+parsed_stream = parsed_stream.withColumn("processed_time", timestamp_seconds(col("processed_time")))
 # Add watermark
 final_stream = parsed_stream.withWatermark("event_time", "10 seconds")
 
@@ -47,7 +49,7 @@ query_price = final_stream.writeStream \
     .option("checkpointLocation", ".//checkpoint//crypto_prices") \
     .start()
 
-# Windowing for OLDC
+# Windowing for OHLC
 window_stream = final_stream.withColumn(
     "time_price", 
     struct(col("event_time"), col("price"))
@@ -58,10 +60,9 @@ ohlc_stream = window_stream \
         window(col("event_time"), "1 minute"), 
         col("symbol")
     ).agg(
-        # Logika Struct Sort untuk Open & Close
-        min("time_price").getField("price").alias("open"),
-        max("time_price").getField("price").alias("close"),
-        # Logika murni untuk High & Low
+        # AMBIL HARGA BERDASARKAN URUTAN WAKTU
+        first("price").alias("open"),
+        last("price").alias("close"),
         max("price").alias("high"),
         min("price").alias("low")
     ).select(

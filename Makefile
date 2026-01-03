@@ -1,6 +1,6 @@
 DB_NAME=crypto-stream-sink
 DB_USER=crypto-stream-user
-DB_CONTAINER = crypto-stream-postgres
+DB_CONTAINER = postgres
 .PHONY: setup-kafka run-producer run-consumer run-spark db-shell clean clean-port
 
 stop-compose:
@@ -25,7 +25,7 @@ run-spark:
 	spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,org.postgresql:postgresql:42.7.2 main.py
 
 db-shell:
-	docker exec -it crypto-stream-postgres psql -U ${DB_USER} -d ${DB_NAME}
+	docker exec -it $(DB_CONTAINER) psql -U ${DB_USER} -d ${DB_NAME}
 
 clean:
 	rm -rf checkpoint/*
