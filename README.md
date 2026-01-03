@@ -23,7 +23,7 @@ Features:
 
 📷 **Grafana Dashboard**
 
-> ![alt text](<img/dashboard.gif>)
+> ![!\[alt text\](<img/dashboard.gif>)](img/dashboard.gif)
 
 ## High-Level Architecture
 
